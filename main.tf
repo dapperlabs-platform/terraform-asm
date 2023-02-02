@@ -62,10 +62,10 @@ resource "kubernetes_manifest" "control_plane_revision" {
 
     "metadata" = {
       "name"      = local.revision_name
-      "namespace" =  try(kubernetes_namespace.system[0].metadata[0].name, "istio-system")
+      "namespace" = try(kubernetes_namespace.system[0].metadata[0].name, "istio-system")
       labels = {
         "mesh.cloud.google.com/managed-cni-enabled" = var.enable_cni
-        "app.kubernetes.io/created-by" = "terraform-module"
+        "app.kubernetes.io/created-by"              = "terraform-module"
       }
       annotations = {
         "mesh.cloud.google.com/vpcsc" = var.enable_vpc_sc
@@ -73,14 +73,8 @@ resource "kubernetes_manifest" "control_plane_revision" {
     }
 
     "spec" = {
-      "type" = "managed_service"
+      "type"    = "managed_service"
       "channel" = local.channel
-    }
-  }
-
-  wait_for = {
-    fields = {
-      "status.conditions[1].type" = "ProvisioningFinished"
     }
   }
 }
