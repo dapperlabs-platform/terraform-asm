@@ -55,24 +55,32 @@ resource "kubernetes_config_map" "asm_options" {
   depends_on = [google_gke_hub_membership.membership, google_gke_hub_feature.mesh, var.module_depends_on]
 }
 
-#resource "kubernetes_manifest" "control_plane_revision" {
-#  manifest = {
-#    "apiVersion" = "mesh.cloud.google.com/v1beta1"
-#    "kind"       = "ControlPlaneRevision"
-#    "metadata" = {
-#      "name"      = local.revision_name
-#      "namespace" =  try(kubernetes_namespace.system[0].metadata[0].name, "istio-system")
-#    }
-#    "spec" = {
-#      "type" = "managed_service"
-#      "channel" = local.channel
-#    }
-#    annotations = {
-#      "mesh.cloud.google.com/vpcsc" = var.enable_vpc_sc
-#    }
-#    labels = {
-#      "mesh.cloud.google.com/managed-cni-enabled" = var.enable_cni
-#      "app.kubernetes.io/created-by" = "terraform-module"
-#    }
-#  }
-#}
+resource "kubernetes_manifest" "control_plane_revision" {
+  manifest = {
+    "apiVersion" = "mesh.cloud.google.com/v1beta1"
+    "kind"       = "ControlPlaneRevision"
+
+    "metadata" = {
+      "name"      = local.revision_name
+      "namespace" =  try(kubernetes_namespace.system[0].metadata[0].name, "istio-system")
+      labels = {
+        "mesh.cloud.google.com/managed-cni-enabled" = var.enable_cni
+        "app.kubernetes.io/created-by" = "terraform-module"
+      }
+      annotations = {
+        "mesh.cloud.google.com/vpcsc" = var.enable_vpc_sc
+      }
+    }
+
+    "spec" = {
+      "type" = "managed_service"
+      "channel" = local.channel
+    }
+  }
+
+  wait_for = {
+    fields = {
+      "status.conditions[1].type" = "ProvisioningFinished"
+    }
+  }
+}
