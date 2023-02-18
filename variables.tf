@@ -87,12 +87,6 @@ variable "enable_mesh_feature" {
   default     = false
 }
 
-variable "internal_ip" {
-  description = "Use internal ip for the cluster endpoint when running kubectl commands."
-  type        = bool
-  default     = false
-}
-
 variable "module_depends_on" {
   description = "List of modules or resources this module depends on.  If multiple, all items must be the same type."
   type        = list(any)

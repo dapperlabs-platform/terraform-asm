@@ -33,28 +33,44 @@ data "google_container_cluster" "asm" {
   depends_on = [var.module_depends_on]
 }
 
-resource "kubernetes_manifest" "control_plane_revision" {
-  manifest = {
-    "apiVersion" = "mesh.cloud.google.com/v1beta1"
-    "kind"       = "ControlPlaneRevision"
+resource "kubernetes_namespace" "system" {
+  count = var.create_system_namespace ? 1 : 0
 
-    "metadata" = {
-      "name"      = local.revision_name
-      "namespace" = "istio-system"
-      labels = {
-        "mesh.cloud.google.com/managed-cni-enabled" = var.enable_cni
-        "app.kubernetes.io/created-by"              = "terraform-module"
-      }
-      annotations = {
-        "mesh.cloud.google.com/vpcsc" = var.enable_vpc_sc
-      }
-    }
+  metadata {
+    name = "istio-system"
+  }
+}
 
-    "spec" = {
-      "type"    = "managed_service"
-      "channel" = local.channel
-    }
+resource "kubernetes_config_map" "asm_options" {
+  metadata {
+    name      = "asm-options"
+    namespace = try(kubernetes_namespace.system[0].metadata[0].name, "istio-system")
+  }
+
+  data = {
+    multicluster_mode = var.multicluster_mode
+    ASM_OPTS          = var.enable_cni ? "CNI=on" : null
   }
 
   depends_on = [google_gke_hub_membership.membership, google_gke_hub_feature.mesh, var.module_depends_on]
+}
+
+resource "google_gke_hub_membership" "membership" {
+  count         = var.enable_fleet_registration ? 1 : 0
+  provider      = google-beta
+  project       = local.fleet_id
+  membership_id = "${data.google_container_cluster.asm.name}-membership"
+  endpoint {
+    gke_cluster {
+      resource_link = "//container.googleapis.com/${data.google_container_cluster.asm.id}"
+    }
+  }
+}
+
+resource "google_gke_hub_feature" "mesh" {
+  count    = var.enable_mesh_feature ? 1 : 0
+  name     = "servicemesh"
+  project  = local.fleet_id
+  location = "global"
+  provider = google-beta
 }
