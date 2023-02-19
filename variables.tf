@@ -104,3 +104,9 @@ variable "create_system_namespace" {
   type        = bool
   default     = true
 }
+
+variable "create_cpr" {
+  description = "Determines if the control plane revision should be installed"
+  type        = bool
+  default     = false
+}

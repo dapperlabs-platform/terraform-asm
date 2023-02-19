@@ -55,17 +55,29 @@ resource "kubernetes_config_map" "asm_options" {
   depends_on = [google_gke_hub_membership.membership, google_gke_hub_feature.mesh, var.module_depends_on]
 }
 
-module "cpr" {
-  source  = "terraform-google-modules/gcloud/google//modules/kubectl-wrapper"
-  version = "~> 3.1"
+resource "kubernetes_manifest" "control_plane_revision" {
+  count = var.create_cpr ? 1 : 0
+  manifest = {
+    "apiVersion" = "mesh.cloud.google.com/v1beta1"
+    "kind"       = "ControlPlaneRevision"
 
-  project_id       = var.project_id
-  cluster_name     = var.cluster_name
-  cluster_location = var.cluster_location
-  internal_ip      = var.internal_ip
+    "metadata" = {
+      "name"      = local.revision_name
+      "namespace" = "istio-system"
+      labels = {
+        "mesh.cloud.google.com/managed-cni-enabled" = var.enable_cni
+        "app.kubernetes.io/created-by"              = "terraform-module"
+      }
+      annotations = {
+        "mesh.cloud.google.com/vpcsc" = var.enable_vpc_sc
+      }
+    }
 
-  kubectl_create_command  = "${path.module}/scripts/create_cpr.sh ${local.revision_name} ${local.channel} ${var.enable_cni} ${var.enable_vpc_sc}"
-  kubectl_destroy_command = "${path.module}/scripts/destroy_cpr.sh ${local.revision_name}"
+    "spec" = {
+      "type"    = "managed_service"
+      "channel" = local.channel
+    }
+  }
 
-  module_depends_on = [kubernetes_config_map.asm_options]
+  depends_on = [google_gke_hub_membership.membership, google_gke_hub_feature.mesh, var.module_depends_on]
 }
